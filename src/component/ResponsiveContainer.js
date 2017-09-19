@@ -3,6 +3,7 @@
  */
 import React, { Component } from 'react';
 import PropTypes from 'prop-types';
+import classNames from 'classnames';
 import ReactResizeDetector from 'react-resize-detector';
 import _ from 'lodash';
 import { isPercent } from '../util/DataUtils';
@@ -14,11 +15,13 @@ class ResponsiveContainer extends Component {
     aspect: PropTypes.number,
     width: PropTypes.oneOfType([PropTypes.string, PropTypes.number]),
     height: PropTypes.oneOfType([PropTypes.string, PropTypes.number]),
-    minHeight: PropTypes.number,
-    minWidth: PropTypes.number,
-    maxHeight: PropTypes.number,
+    minHeight: PropTypes.oneOfType([PropTypes.string, PropTypes.number]),
+    minWidth: PropTypes.oneOfType([PropTypes.string, PropTypes.number]),
+    maxHeight: PropTypes.oneOfType([PropTypes.string, PropTypes.number]),
     children: PropTypes.node.isRequired,
     debounce: PropTypes.number,
+    id: PropTypes.oneOfType([PropTypes.string, PropTypes.number]),
+    className: PropTypes.oneOfType([PropTypes.string, PropTypes.number]),
   };
 
   static defaultProps = {
@@ -108,7 +111,7 @@ class ResponsiveContainer extends Component {
       }
     }
 
-    warn(calculatedWidth > 0 && calculatedHeight > 0,
+    warn(calculatedWidth > 0 || calculatedHeight > 0,
       `The width(%s) and height(%s) of chart should be greater than 0,
        please check the style of container, or the props width(%s) and height(%s),
        or add a minWidth(%s) or minHeight(%s) or use aspect(%s) to control the
@@ -124,12 +127,13 @@ class ResponsiveContainer extends Component {
   }
 
   render() {
-    const { minWidth, minHeight, width, height, maxHeight } = this.props;
+    const { minWidth, minHeight, width, height, maxHeight, id, className } = this.props;
     const style = { width, height, minWidth, minHeight, maxHeight };
 
     return (
       <div
-        className="recharts-responsive-container"
+        id={id}
+        className={classNames('recharts-responsive-container', className)}
         style={style}
         ref={(node) => { this.container = node; }}
       >

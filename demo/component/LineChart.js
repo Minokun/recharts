@@ -6,12 +6,16 @@ import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, ReferenceLine,
   Label, LabelList } from 'recharts';
 import { scalePow, scaleLog } from 'd3-scale';
 
+function Hello() {
+  return <div>Hello</div>;
+}
+
 const data = [
   { name: 'Page A', uv: 1000, pv: 2400, amt: 2400, uvError: [75, 20] },
   { name: 'Page B', uv: 300, pv: 4567, amt: 2400, uvError: [90, 40] },
   { name: 'Page C', uv: 280, pv: 1398, amt: 2400, uvError: 40 },
   { name: 'Page D', uv: 200, pv: 9800, amt: 2400, uvError: 20 },
-  { name: 'Page E', uv: 278, pv: 3908, amt: 2400, uvError: 28 },
+  { name: 'Page E', uv: 278, pv: null, amt: 2400, uvError: 28 },
   { name: 'Page F', uv: 189, pv: 4800, amt: 2400, uvError: [90, 20] },
   { name: 'Page G', uv: 189, pv: 4800, amt: 2400, uvError: [28, 40] },
   { name: 'Page H', uv: 189, pv: 4800, amt: 2400, uvError: 28 },
@@ -384,10 +388,10 @@ export default class Demo extends Component {
               onMouseEnter={this.handleLegendMouseEnter}
               onMouseLeave={this.handleLegendMouseLeave}
             />
-            <XAxis type="number" dataKey="pv" height={40}>
+            <XAxis type="number" dataKey="pv" height={40} label={<Hello />}>
               <Label value="x轴" position="insideBottom" />
             </XAxis>
-            <YAxis type="number">
+            <YAxis type="number" unit="%">
               <Label value="y轴" position="insideLeft" angle={90} />
             </YAxis>
             <Tooltip />
@@ -400,7 +404,7 @@ export default class Demo extends Component {
               strokeOpacity={opacity}
               strokeDasharray="3 3"
             >
-              <LabelList position="bottom" offset={10} />
+              <LabelList position="bottom" offset={10} dataKey="name" />
             </Line>
             <Brush dataKey="name" height={30} />
           </LineChart>
@@ -440,7 +444,7 @@ export default class Demo extends Component {
             <Line type='monotone' key={'0'} dataKey='uv' stroke='#ff7300' yAxisId={0} activeDot={{fill: '#ff7300', stroke: 'none'}}/>
             {this.state.newLine && <Line type='monotone' key={'1'} dataKey='amt' stroke='#132908' yAxisId={1} activeDot={{fill: '#132908', stroke: 'none', r: 6}}/>}
             <Line type='monotone' key={'2'} dataKey='pv' stroke='#387908' yAxisId={1} activeDot={{fill: '#387908', stroke: 'none', r: 6}}/>
-            <Tooltip />
+            <Tooltip filterNull={false} />
           </LineChart>
         </div>
 

@@ -1,3 +1,85 @@
+## 1.0.0-alpha.5(Sep 16, 2017)
+
+### fix
+
+- Don't check for animation when it is disabled
+- fix bug of paddingAngle when isAnimationActive is true
+
+### feat
+
+- add props filterNull to `Tooltip`, null values will not be filtered when filterNull = false
+
+### refactor
+
+- Allowing length in different unit in ResponsiveContainer
+  By allowing type: String on 'minHeight', 'minWidth', 'maxHeight' property, developers can use length in different units like em, pt etc.
+- Render curve with fill first in Area
+
+
+### dep
+
+- remove react-transition-group in peer dependencies
+- Updates resize-detector to 0.6, close #705, fix the problem with strange scrollbars appearing over the charts
+
+## 1.0.0-alpha.4(Aug 21, 2017)
+
+### fix
+
+- Fix error 'Cannot read property 'map' of undefined' in Pie
+- Fix bug of parsing the width of Brush
+- Don't render any path when width === 0 || height === 0 in Rectangle
+### refactor
+
+- Avoid calculating ticks if tick is set to false
+- Update the order of parsing data in mixed components
+
+### feat
+
+- Render unit when the props unit of XAxis, YAxis is specified
+- Add default nameKey to "name" property in Pie
+- Add props className and id to ResponsiveContainer
+
+### dep
+
+- Update recharts-scale to fix bug of ticks
+
+## 1.0.0-alpha.3(Aug 12, 2017)
+
+### fix
+
+- fix bug of isChildrenEqual
+- fix "hide" props of YAxis
+
+## 1.0.0-alpha.2(Jul 10, 2017)
+
+### feat
+
+- Add props className to ReferenceLine, ReferenceDot, ReferenceArea
+- Specify the contents of LabelList by `dataKey`
+
+### fix
+
+- Fix faulty logic check in inRange function
+- onTouchMove event call method that handle tooltip and active dot draw
+- Show tooltip on drag movement on touch devices
+- Fix viewBox of Label when render implicit label
+- Fix label of Pie
+- Fix events of Pie and PieChart
+- Fix bug of interplateNumber
+- Fix the bug of parsing "dataMin - 0.05" like domain
+
+## 1.0.0-alpha.1(Jun 11, 2017)
+
+### fix
+
+- update the propType of the props data or Bar
+- fix the type of Curve
+- fix connectNulls of `Line`
+- update version of recharts-scale to fix #713
+- fix valueKey of Pie temporarily and add logs when use deprecated "valueKey"
+- bind events to Radar
+- fix animation of active-dot
+
 ## 1.0.0-alpha.0(May 24, 2017)
 
 ### refactor

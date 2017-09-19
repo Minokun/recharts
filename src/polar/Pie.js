@@ -6,7 +6,6 @@ import PropTypes from 'prop-types';
 import Animate from 'react-smooth';
 import classNames from 'classnames';
 import _ from 'lodash';
-import { interpolateNumber } from 'd3-interpolate';
 import pureRender from '../util/PureRender';
 import Layer from '../container/Layer';
 import Sector from '../shape/Sector';
@@ -18,8 +17,9 @@ import Cell from '../component/Cell';
 import { PRESENTATION_ATTRIBUTES, EVENT_ATTRIBUTES, LEGEND_TYPES,
   getPresentationAttributes, findAllByType, filterEventsOfChild, isSsr } from '../util/ReactUtils';
 import { polarToCartesian, getMaxRadius } from '../util/PolarUtils';
-import { isNumber, uniqueId, getPercentValue, mathSign } from '../util/DataUtils';
+import { isNumber, uniqueId, getPercentValue, mathSign, interpolateNumber } from '../util/DataUtils';
 import { getValueByDataKey } from '../util/ChartUtils';
+import { warn } from '../util/LogUtils';
 
 @pureRender
 class Pie extends Component {
@@ -41,6 +41,7 @@ class Pie extends Component {
     cornerRadius: PropTypes.oneOfType([PropTypes.number, PropTypes.string]),
     dataKey: PropTypes.oneOfType([PropTypes.string, PropTypes.number, PropTypes.func]).isRequired,
     nameKey: PropTypes.oneOfType([PropTypes.string, PropTypes.number, PropTypes.func]),
+    valueKey: PropTypes.oneOfType([PropTypes.string, PropTypes.number, PropTypes.func]),
     data: PropTypes.arrayOf(PropTypes.object),
     minAngle: PropTypes.number,
     legendType: PropTypes.oneOf(LEGEND_TYPES),
@@ -99,6 +100,7 @@ class Pie extends Component {
     animationBegin: 400,
     animationDuration: 1500,
     animationEasing: 'ease',
+    nameKey: 'name',
   };
 
   static parseDeltaAngle = ({ startAngle, endAngle }) => {
@@ -145,7 +147,8 @@ class Pie extends Component {
     const pieData = Pie.getRealPieData(item);
     if (!pieData || !pieData.length) { return []; }
 
-    const { cornerRadius, startAngle, endAngle, paddingAngle, dataKey, nameKey } = item.props;
+    const { cornerRadius, startAngle, endAngle, paddingAngle, dataKey, nameKey,
+      valueKey } = item.props;
     const minAngle = Math.abs(item.props.minAngle);
     const coordinate = Pie.parseCoordinateOfPie(item, offset);
     const len = pieData.length;
@@ -153,8 +156,22 @@ class Pie extends Component {
     const absDeltaAngle = Math.abs(deltaAngle);
     const totalPadingAngle = (absDeltaAngle >= 360 ? len : (len - 1)) * paddingAngle;
     const realTotalAngle = absDeltaAngle - len * minAngle - totalPadingAngle;
+    let realDataKey = dataKey;
+
+    if (_.isNil(dataKey) && _.isNil(valueKey)) {
+      warn(false,
+      `Use "dataKey" to specify the value of pie,
+      the props "valueKey" will be deprecated in 1.1.0`);
+      realDataKey = 'value';
+    } else if (_.isNil(dataKey)) {
+      warn(false,
+      `Use "dataKey" to specify the value of pie,
+      the props "valueKey" will be deprecated in 1.1.0`);
+      realDataKey = valueKey;
+    }
+
     const sum = pieData.reduce((result, entry) => {
-      const val = getValueByDataKey(entry, dataKey, 0);
+      const val = getValueByDataKey(entry, realDataKey, 0);
       return result + (isNumber(val) ? val : 0);
     }, 0);
     let sectors = [];
@@ -162,7 +179,7 @@ class Pie extends Component {
 
     if (sum > 0) {
       sectors = pieData.map((entry, i) => {
-        const val = getValueByDataKey(entry, dataKey, 0);
+        const val = getValueByDataKey(entry, realDataKey, 0);
         const name = getValueByDataKey(entry, nameKey, i);
         const percent = (isNumber(val) ? val : 0) / sum;
         let tempStartAngle;
@@ -186,9 +203,11 @@ class Pie extends Component {
           percent, cornerRadius, name, tooltipPayload, midAngle, middleRadius, tooltipPosition,
           ...entry,
           ...coordinate,
-          value: getValueByDataKey(entry, dataKey),
+          value: getValueByDataKey(entry, realDataKey),
           startAngle: tempStartAngle,
           endAngle: tempEndAngle,
+          payload: entry,
+          paddingAngle: mathSign(deltaAngle) * paddingAngle,
         };
 
         return prev;
@@ -325,7 +344,7 @@ class Pie extends Component {
     if (isAnimationActive && !this.state.isAnimationFinished) {
       return null;
     }
-    const { label, labelLine, dataKey } = this.props;
+    const { label, labelLine, dataKey, valueKey } = this.props;
     const pieProps = getPresentationAttributes(this.props);
     const customLabelProps = getPresentationAttributes(label);
     const customLabelLineProps = getPresentationAttributes(labelLine);
@@ -353,11 +372,18 @@ class Pie extends Component {
         ...customLabelLineProps,
         points: [polarToCartesian(entry.cx, entry.cy, entry.outerRadius, midAngle), endPoint],
       };
+      let realDataKey = dataKey;
+      // TODO: compatible to lower versions
+      if (_.isNil(dataKey) && _.isNil(valueKey)) {
+        realDataKey = 'value';
+      } else if (_.isNil(dataKey)) {
+        realDataKey = valueKey;
+      }
 
       return (
         <Layer key={`label-${i}`}>
           {labelLine && this.renderLabelLineItem(labelLine, lineProps)}
-          {this.renderLabelItem(label, labelProps, getValueByDataKey(entry, dataKey))}
+          {this.renderLabelItem(label, labelProps, getValueByDataKey(entry, realDataKey))}
         </Layer>
       );
     });
@@ -415,6 +441,7 @@ class Pie extends Component {
 
             sectors.forEach((entry, index) => {
               const prev = prevSectors && prevSectors[index];
+              const paddingAngle = index > 0 ? entry.paddingAngle : 0;
 
               if (prev) {
                 const angleIp = interpolateNumber(
@@ -423,8 +450,8 @@ class Pie extends Component {
                 );
                 const latest = {
                   ...entry,
-                  startAngle: curAngle,
-                  endAngle: curAngle + angleIp(t),
+                  startAngle: curAngle + paddingAngle,
+                  endAngle: curAngle + angleIp(t) + paddingAngle,
                 };
 
                 stepData.push(latest);
@@ -433,7 +460,11 @@ class Pie extends Component {
                 const { endAngle, startAngle } = entry;
                 const interpolatorAngle = interpolateNumber(0, endAngle - startAngle);
                 const deltaAngle = interpolatorAngle(t);
-                const latest = { ...entry, startAngle: curAngle, endAngle: curAngle + deltaAngle };
+                const latest = {
+                  ...entry,
+                  startAngle: curAngle + paddingAngle,
+                  endAngle: curAngle + deltaAngle + paddingAngle,
+                };
 
                 stepData.push(latest);
                 curAngle = latest.endAngle;

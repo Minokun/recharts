@@ -120,17 +120,7 @@ const generateCategoricalChart = ({
     };
 
     static getDisplayedData = (props, { graphicalItems, dataStartIndex, dataEndIndex }, item) => {
-      const { data } = props;
-
-      if (data && data.length && isNumber(dataStartIndex) && isNumber(dataEndIndex)) {
-        return data.slice(dataStartIndex, dataEndIndex + 1);
-      }
-
-      if (item && item.props) {
-        return item.props.data || [];
-      }
-
-      return graphicalItems.reduce((result, child) => {
+      const itemsData = (graphicalItems || []).reduce((result, child) => {
         const itemData = child.props.data;
 
         if (itemData && itemData.length) {
@@ -139,6 +129,21 @@ const generateCategoricalChart = ({
 
         return result;
       }, []);
+      if (itemsData && itemsData.length > 0) {
+        return itemsData;
+      }
+
+      if (item && item.props && item.props.data && item.props.data.length > 0) {
+        return item.props.data;
+      }
+
+      const { data } = props;
+
+      if (data && data.length && isNumber(dataStartIndex) && isNumber(dataEndIndex)) {
+        return data.slice(dataStartIndex, dataEndIndex + 1);
+      }
+
+      return [];
     };
 
     constructor(props) {
@@ -257,16 +262,18 @@ const generateCategoricalChart = ({
     getAxisMapByAxes(props, { axes, graphicalItems, axisType, axisIdKey,
       stackGroups, dataStartIndex, dataEndIndex }) {
       const { layout, children, stackOffset } = props;
-      const displayedData = this.constructor.getDisplayedData(props, {
-        graphicalItems, dataStartIndex, dataEndIndex,
-      });
-      const len = displayedData.length;
       const isCategorial = isCategorialAxis(layout, axisType);
 
       // Eliminate duplicated axes
       const axisMap = axes.reduce((result, child) => {
         const { type, dataKey, allowDataOverflow, scale } = child.props;
         const axisId = child.props[axisIdKey];
+        const displayedData = this.constructor.getDisplayedData(props, {
+          graphicalItems: graphicalItems.filter(item => item.props[axisIdKey] === axisId),
+          dataStartIndex,
+          dataEndIndex,
+        });
+        const len = displayedData.length;
 
         if (!result[axisId]) {
           let domain, duplicateDomain, categoricalDomain;
@@ -575,8 +582,12 @@ const generateCategoricalChart = ({
               ...componsedFn({
                 ...axisObj, displayedData, props, dataKey, item, bandSize,
                 barPosition, offset, stackedData, layout, dataStartIndex, dataEndIndex,
-                onItemMouseLeave: this.handleItemMouseLeave,
-                onItemMouseEnter: this.handleItemMouseEnter,
+                onItemMouseLeave: combineEventHandlers(
+                  this.handleItemMouseLeave, null, item.props.onMouseLeave
+                ),
+                onItemMouseEnter: combineEventHandlers(
+                  this.handleItemMouseEnter, null, item.props.onMouseEnter
+                ),
               }),
               key: item.key || `item-${index}`,
               [numericAxisName]: axisObj[numericAxisName],
@@ -673,7 +684,7 @@ const generateCategoricalChart = ({
 
       if (layout === 'horizontal' || layout === 'vertical') {
         const { offset } = this.state;
-        const isInRange = x >= offset.left && y <= (offset.left + offset.width) &&
+        const isInRange = x >= offset.left && x <= (offset.left + offset.width) &&
           y >= offset.top && y <= offset.top + offset.height;
 
         return isInRange ? { x, y } : null;
@@ -969,8 +980,8 @@ const generateCategoricalChart = ({
     handleMouseMove = (e) => {
       if (e && _.isFunction(e.persist)) {
         e.persist();
-        this.triggeredAfterMouseMove(e);
       }
+      this.triggeredAfterMouseMove(e);
     }
     /**
      * The handler if mouse leaving chart
@@ -996,7 +1007,7 @@ const generateCategoricalChart = ({
         const mouse = this.getMouseInfo(e);
         const handler = this.props[eventName];
 
-        handler(mouse);
+        handler(mouse, e);
       }
     };
 
@@ -1280,7 +1291,8 @@ const generateCategoricalChart = ({
         data,
         x: offset.left,
         y: offset.top + offset.height + offset.brushBottom - (margin.bottom || 0),
-        width: offset.width,
+        width: isNumber(element.props.width) && element.props.width ?
+          element.props.width : offset.width,
         startIndex: dataStartIndex,
         endIndex: dataEndIndex,
         updateId: `brush-${updateId}`,
@@ -1317,17 +1329,9 @@ const generateCategoricalChart = ({
       }
 
       return (
-        <Smooth
-          from="scale(0)"
-          to="scale(1)"
-          duration={400}
-          key={props.key}
-          attributeName="transform"
-        >
-          <Layer style={{ transformOrigin: 'center center' }}>
-            {dot}
-          </Layer>
-        </Smooth>
+        <Layer className="recharts-active-dot" key={props.key}>
+          {dot}
+        </Layer>
       );
     }
 
